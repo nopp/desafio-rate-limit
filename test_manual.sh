@@ -11,44 +11,62 @@ echo "1. Testando health check..."
 curl -s "$BASE_URL/health"
 echo ""
 
-echo "2. Testando rate limit por IP (fazendo 15 requisições)..."
-for i in {1..15}; do
+echo "2. Testando rate limit por IP..."
+echo "   Fazendo várias requisições rápidas para atingir o limite..."
+
+# Primeiro, fazer algumas requisições para "aquecer" o rate limit
+for i in {1..10}; do
+  curl -s "$BASE_URL/test" > /dev/null
+done
+
+echo "   ⚡ Fazendo requisições rápidas para forçar rate limit..."
+for i in {1..20}; do
   echo -n "Request $i: "
-  response=$(curl -s -w "%{http_code}" "$BASE_URL/test")
+  response=$(curl -s -w "%{http_code}" --connect-timeout 1 --max-time 1 "$BASE_URL/test")
   http_code="${response: -3}"
-  body="${response%???}"
   
   if [ "$http_code" = "200" ]; then
     echo "✅ OK"
   elif [ "$http_code" = "429" ]; then
-    echo "🚫 Rate limited"
+    echo "🚫 RATE LIMITED! (Limite atingido)"
+    echo "   Resposta: $(echo "$response" | sed 's/...$//')"
     break
   else
     echo "❌ Error: $http_code"
   fi
-  
-  sleep 0.1
 done
 
 echo ""
-echo "3. Testando rate limit por token (fazendo 15 requisições com API_KEY)..."
-for i in {1..15}; do
-  echo -n "Request $i (with token): "
-  response=$(curl -s -w "%{http_code}" -H "API_KEY: test-token-123" "$BASE_URL/test")
+echo "3. Testando rate limit com token..."
+echo "   Token tem limite mais alto (100 req/s), precisa de muitas requisições..."
+
+# Como o limite do token é 100 req/s, vamos fazer muitas requisições rápidas
+echo "   ⚡ Fazendo 120 requisições rápidas com token..."
+count_success=0
+count_limited=0
+
+for i in {1..120}; do
+  response=$(curl -s -w "%{http_code}" --connect-timeout 1 --max-time 1 -H "API_KEY: abc123" "$BASE_URL/test" 2>/dev/null)
   http_code="${response: -3}"
-  body="${response%???}"
   
   if [ "$http_code" = "200" ]; then
-    echo "✅ OK"
+    count_success=$((count_success + 1))
   elif [ "$http_code" = "429" ]; then
-    echo "🚫 Rate limited"
-    break
-  else
-    echo "❌ Error: $http_code"
+    count_limited=$((count_limited + 1))
+    if [ $count_limited -eq 1 ]; then
+      echo "   🚫 RATE LIMITED! (Token limit atingido na requisição $i)"
+      echo "   Resposta: $(echo "$response" | sed 's/...$//')"
+    fi
   fi
   
-  sleep 0.1
+  # Mostrar progresso a cada 10 requisições
+  if [ $((i % 10)) -eq 0 ]; then
+    echo "   Progresso: $i/120 (Sucesso: $count_success, Limitadas: $count_limited)"
+  fi
 done
+
+echo "   ✅ Sucesso: $count_success"
+echo "   🚫 Limitadas: $count_limited"
 
 echo ""
 echo "4. Testando endpoints da API..."
