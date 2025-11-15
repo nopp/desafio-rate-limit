@@ -1,0 +1,39 @@
+# Binários
+rate-limiter
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Arquivos de teste
+*.test
+*.out
+/tmp/
+
+# Dependências
+vendor/
+
+# Logs
+*.log
+
+# Arquivos de ambiente local
+.env.local
+.env.development
+.env.test
+
+# Cache do Go
+.cache/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Arquivos temporários
+/tmp/response.json

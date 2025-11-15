@@ -8,7 +8,7 @@ echo ""
 BASE_URL="http://localhost:8080"
 
 echo "1. Testando health check..."
-curl -s "$BASE_URL/health" | jq '.'
+curl -s "$BASE_URL/health"
 echo ""
 
 echo "2. Testando rate limit por IP (fazendo 15 requisições)..."
